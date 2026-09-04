@@ -24,7 +24,14 @@ jobs:
         cache-disabled: true
 
     - name: Build Debug APK
-      run: gradle assembleDebug
-      env:
-        ANDROID_HOME: ${{ steps.android.outputs.android-home }}
+      run: |
+        export ANDROID_HOME=/usr/local/lib/android/sdk
+        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+        if [ -f "./gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+        else
+          gradle wrapper
+          ./gradlew assembleDebug --stacktrace
+        fi
         
