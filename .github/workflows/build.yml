@@ -18,13 +18,9 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v4
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-      continue-on-error: true
-
-    - name: Build Debug APK with Gradle
-      run: ./gradlew assembleDebug
-      
+    - name: Build Debug APK with Native SDK
+      run: |
+        export ANDROID_HOME=$ANDROID_SDK_ROOT
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        
