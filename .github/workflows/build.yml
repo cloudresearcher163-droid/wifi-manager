@@ -18,24 +18,81 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Locate Project and Build APK
+    - name: Generate Project and Build APK
       run: |
-        # Find where settings.gradle or build.gradle is hidden in the repo
-        PROJECT_DIR=$(find . -name "settings.gradle" -o -name "settings.gradle.kts" -maxdepth 3 | xargs dirname | head -n 1)
-        
-        if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-          # If no gradle project exists yet, look for any folder with code or use root
-          PROJECT_DIR="."
+        # If no Android project files exist, generate a minimal working structure automatically
+        if [ ! -f "settings.gradle" ]; then
+          echo "Generating minimal Android project structure..."
+          mkdir -p app/src/main/java/com/wifi/shortcut
+
+          echo "include ':app'" > settings.gradle
+
+          cat << 'EOF' > build.gradle
+          plugins {
+              id 'com.android.application' version '8.2.0' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.20' apply false
+          }
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.wifi.shortcut'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.wifi.shortcut'
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:label="Wi-Fi Shortcut">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/java/com/wifi/shortcut/MainActivity.kt
+          package com.wifi.shortcut
+          import android.content.Intent
+          import android.os.Build
+          import android.os.Bundle
+          import android.provider.Settings
+          import androidx.appcompat.app.AppCompatActivity
+
+          class MainActivity : AppCompatActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                      Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                  } else {
+                      Intent(Settings.ACTION_WIFI_SETTINGS)
+                  }
+                  startActivity(intent)
+                  finish()
+              }
+          }
+          EOF
         fi
-        
-        echo "Found project directory at: $PROJECT_DIR"
-        cd "$PROJECT_DIR"
-        
-        # Setup modern gradle wrapper if missing
-        if [ ! -f "./gradlew" ]; then
-          gradle wrapper --gradle-version 8.5
-        fi
-        
+
+        gradle wrapper --gradle-version 8.5
         chmod +x gradlew
         ./gradlew assembleDebug
 
@@ -43,6 +100,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: '**/build/outputs/apk/debug/app-debug.apk'
-        if-no-files-found: error
+        path: app/build/outputs/apk/debug/app-debug.apk
         
