@@ -18,20 +18,17 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        cache-disabled: true
-
     - name: Build Debug APK
       run: |
-        export ANDROID_HOME=/usr/local/lib/android/sdk
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-        if [ -f "./gradlew" ]; then
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-        else
+        if [ ! -f "./gradlew" ]; then
           gradle wrapper
-          ./gradlew assembleDebug --stacktrace
         fi
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
         
